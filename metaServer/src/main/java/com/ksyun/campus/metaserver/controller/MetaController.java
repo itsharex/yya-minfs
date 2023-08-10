@@ -1,5 +1,8 @@
 package com.ksyun.campus.metaserver.controller;
 
+import com.ksyun.campus.metaserver.domain.StatInfo;
+import com.ksyun.campus.metaserver.services.MetaService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -7,27 +10,50 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController("/")
 public class MetaController {
+
+    @Autowired
+    private MetaService metaService;
+
     @RequestMapping("stats")
     public ResponseEntity stats(@RequestHeader String fileSystem,@RequestParam String path){
-        return new ResponseEntity(HttpStatus.OK);
+        StatInfo statInfo = metaService.getStats(fileSystem, path);
+        return new ResponseEntity(statInfo, HttpStatus.OK);
     }
     @RequestMapping("create")
     public ResponseEntity createFile(@RequestHeader String fileSystem, @RequestParam String path){
-        return new ResponseEntity(HttpStatus.OK);
+        if(metaService.create(fileSystem, path)) {
+            return new ResponseEntity(HttpStatus.OK);
+        } else {
+            return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
     @RequestMapping("mkdir")
     public ResponseEntity mkdir(@RequestHeader String fileSystem, @RequestParam String path){
-        return new ResponseEntity(HttpStatus.OK);
+        if(metaService.mkdir(fileSystem, path)) {
+            return new ResponseEntity(HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>("zookeeper连接失败或找不到对应结点", HttpStatus.valueOf(500));
+        }
     }
     @RequestMapping("listdir")
     public ResponseEntity listdir(@RequestHeader String fileSystem,@RequestParam String path){
-        return new ResponseEntity(HttpStatus.OK);
+        List<String> list = metaService.listdir(fileSystem, path);
+        if(list == null) {
+            return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return ResponseEntity.ok(list);
     }
     @RequestMapping("delete")
     public ResponseEntity delete(@RequestHeader String fileSystem, @RequestParam String path){
-        return new ResponseEntity(HttpStatus.OK);
+        if(metaService.delete(fileSystem, path)) {
+            return new ResponseEntity(HttpStatus.OK);
+        } else {
+            return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**
@@ -40,7 +66,11 @@ public class MetaController {
      */
     @RequestMapping("write")
     public ResponseEntity commitWrite(@RequestHeader String fileSystem, @RequestParam String path, @RequestParam int offset, @RequestParam int length){
-        return new ResponseEntity(HttpStatus.OK);
+        if(metaService.write(fileSystem, path, offset, length)) {
+            return new ResponseEntity(HttpStatus.OK);
+        } else {
+            return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**
