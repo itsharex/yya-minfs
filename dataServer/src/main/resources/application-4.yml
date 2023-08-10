@@ -1,0 +1,5 @@
+server:
+  port: 9004
+az:
+  rack: rack4
+  zone: zone4
