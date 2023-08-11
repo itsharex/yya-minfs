@@ -11,6 +11,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import java.io.IOException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,11 +30,17 @@ public class EFileSystem extends FileSystem{
         return null;
     }
     public FSOutputStream create(String path){
-        this.callRemote(path, "create", null);
+        if (path.endsWith("/")) {
+            path.substring(0, path.length() - 1);
+        }
+        HttpStatus status = this.callRemote(path, "create", null).getStatusCode();
+        if(status != HttpStatus.OK) {
+            return null;
+        }
         FSOutputStream fsOutputStream = new FSOutputStream(path, this);
         return fsOutputStream;
     }
-    public boolean mkdir(String path){
+    public boolean mkdir(String path) {
         HttpStatus status = this.callRemote(path, "mkdir", null).getStatusCode();
         return status == HttpStatus.OK ? true : false;
     }

@@ -73,8 +73,59 @@ public class MetaService {
     }
 
     //创建文件
-    public boolean create(String fileSystem, String path) {
-        return true;
+    public boolean create(String path) {
+        boolean allRequestsSuccessful = true;
+        // 逐级创建节点，并存储数据
+        String[] pathParts = path.split("/");
+        StringBuilder pathBuilder = new StringBuilder(ZK_REGISTRY_PATH);
+        List<ReplicaData> randomServerInfos = cache.getRandomServerInfos(3);
+        for (String part : pathParts) {
+            if (!part.isEmpty()) {
+                pathBuilder.append("/").append(part);
+                String nodePath = pathBuilder.toString();
+                StatInfo statInfo = creatDirStatInfo(nodePath, randomServerInfos);
+                // 检查节点是否存在
+                try {
+                    System.out.println(nodePath);
+                    // 检查节点是否存在
+                    if (client.checkExists().forPath(nodePath) != null) continue;
+                    String data = objectMapper.writeValueAsString(statInfo);
+                    String createdNodePath = client
+                            .create()
+                            .forPath(nodePath, data.getBytes());
+                    System.out.println("Created node: " + createdNodePath);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return false;
+                }
+            }
+        }
+        String nodePath = pathBuilder.toString();
+        try {
+            byte[] bytes = client.getData().forPath(nodePath);
+            StatInfo statInfo = objectMapper.readValue(new String(bytes), StatInfo.class);
+            statInfo.setType(FileType.File);
+            String data = objectMapper.writeValueAsString(statInfo);
+            // 检查节点是否存在
+            if (client.checkExists().forPath(nodePath) != null) {
+                client.setData().forPath(nodePath, data.getBytes());
+                System.out.println("Node data updated successfully.");
+            } else {
+                System.out.println("Node does not exist.");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+        for (ReplicaData e : randomServerInfos) {
+            HttpStatus statusCode = forwardService.call(e.getDsNode(), "create", path).getStatusCode();
+            if (statusCode != HttpStatus.OK) {
+                allRequestsSuccessful = false;
+                break; // Exit the loop since we encountered a failure
+            }
+        }
+
+        return allRequestsSuccessful;
     }
 
     public boolean mkdir(String path) {
@@ -159,6 +210,10 @@ public class MetaService {
             int childrenCount = client.getChildren().forPath(ZK_REGISTRY_PATH + path).size();
 
             if (childrenCount == 0) {
+                StatInfo statInfo = getStats(path);
+                statInfo.getReplicaData().forEach(e -> {
+                    forwardService.call(e.dsNode, "delete", path);
+                });
                 client.delete().forPath(ZK_REGISTRY_PATH + path);
             } else {
                 return false;
@@ -185,7 +240,7 @@ public class MetaService {
         String res = "";
         StatInfo statInfo = null;
         try {
-            byte[] data = client.getData().forPath("/metaServer" + path);
+            byte[] data = client.getData().forPath(ZK_REGISTRY_PATH + path);
             res = new String(data);
             System.out.println(res);
             statInfo = objectMapper.readValue(res, StatInfo.class);

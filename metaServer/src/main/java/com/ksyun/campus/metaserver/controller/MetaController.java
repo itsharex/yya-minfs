@@ -26,8 +26,8 @@ public class MetaController {
         return new ResponseEntity(statInfo, HttpStatus.OK);
     }
     @RequestMapping("create")
-    public ResponseEntity createFile(@RequestHeader String fileSystem, @RequestParam String path){
-        if(metaService.create(fileSystem, path)) {
+    public ResponseEntity createFile(@RequestParam String path){
+        if(metaService.create(path)) {
             return new ResponseEntity(HttpStatus.OK);
         } else {
             return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);

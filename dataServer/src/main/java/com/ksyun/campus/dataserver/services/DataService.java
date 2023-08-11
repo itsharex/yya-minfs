@@ -146,4 +146,24 @@ public class DataService {
         directory.mkdirs();
         return true;
     }
+
+    public boolean create(String pre) throws IOException {
+        File file = new File(pre);
+        mkdir(file.getParent());
+        file.createNewFile();
+        return true;
+    }
+
+    public boolean delete(String pre) {
+        File file = new File(pre);
+        if (file.exists()) {
+            if (file.delete()) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
 }

@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.ServletInputStream;
 import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
 import java.util.List;
 
 @RestController("/")
@@ -30,6 +31,28 @@ public class DataController {
         String pre = "/" + rack + "/" + zone + cleanedPath;
         System.out.println(pre);
         if(dataService.mkdir(pre)) {
+            return new ResponseEntity(HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>("错误", HttpStatus.valueOf(500));
+        }
+    }
+
+    @RequestMapping("delete")
+    public ResponseEntity delete(@RequestBody String path) throws IOException {
+        String cleanedPath = path.replace("\"", "");
+        String pre = "/" + rack + "/" + zone + cleanedPath;
+        if(dataService.delete(pre)) {
+            return new ResponseEntity(HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>("错误", HttpStatus.valueOf(500));
+        }
+    }
+
+    @RequestMapping("create")
+    public ResponseEntity create(@RequestBody String path) throws IOException {
+        String cleanedPath = path.replace("\"", "");
+        String pre = "/" + rack + "/" + zone + cleanedPath;
+        if(dataService.create(pre)) {
             return new ResponseEntity(HttpStatus.OK);
         } else {
             return new ResponseEntity<>("错误", HttpStatus.valueOf(500));
