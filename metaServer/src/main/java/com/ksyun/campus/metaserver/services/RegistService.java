@@ -77,6 +77,7 @@ public class RegistService implements ApplicationRunner {
                     cache.add(childPath, serverInfo);
                     System.out.println("Child added: " + childPath);
                     System.out.println("Child data: " + new String(childData));
+                    System.out.println(event.getType());
                     break;
                 case CHILD_UPDATED:
                     System.out.println("Child updated: " + childPath);

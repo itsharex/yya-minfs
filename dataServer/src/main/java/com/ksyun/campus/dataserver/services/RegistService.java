@@ -4,7 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ksyun.campus.dataserver.entity.ServerInfo;
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.recipes.cache.ChildData;
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +16,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -70,13 +73,39 @@ public class RegistService implements ApplicationRunner {
 
     // 获取实例数据
     private String getInstanceData() throws JsonProcessingException {
-        ServerInfo serverInfo = new ServerInfo(IP, port, INITIAL_CAPACITY, rack, zone);
+        ServerInfo serverInfo = new ServerInfo(IP, port, INITIAL_CAPACITY, 0, 0, rack, zone);
         return objectMapper.writeValueAsString(serverInfo);
     }
 
-    public List<Map<String, Integer>> getDslist() throws Exception {
-        List<String> doList = client.getChildren().forPath("/dataServer");
+    public ServerInfo getCurrentNodeData() throws Exception {
+        byte[] childData = client.getData().forPath("/dataServer/" + rack + "_" + zone);
+        if (childData != null) {
+            String json = new String(childData, StandardCharsets.UTF_8);
+            return objectMapper.readValue(json, ServerInfo.class);
+        }
         return null;
+    }
+
+    public void updateNodeData(ServerInfo serverInfo) throws Exception {
+        String instanceNode = "/dataServer/" + rack + "_" + zone;
+        Stat stat = client.setData().forPath(instanceNode, objectMapper.writeValueAsBytes(serverInfo));
+        logger.info("Node data updated, version: {}", stat.getVersion());
+    }
+
+    public List<String> getDslist() throws Exception {
+        String currentNode = rack + "_" + zone;
+        List<String> nodeList = client.getChildren().forPath("/dataServer");
+
+        // 过滤掉当前节点
+        nodeList.remove(currentNode);
+        List<String> res = new ArrayList<>();
+        for(int i = 0; i < nodeList.size(); ++i) {
+            byte[] Data = client.getData().forPath("/dataServer/" + nodeList.get(i));
+            String json = new String(Data, StandardCharsets.UTF_8);
+            ServerInfo serverInfo = objectMapper.readValue(json, ServerInfo.class);
+            res.add(serverInfo.getIp() + ":" +serverInfo.getPort());
+        }
+        return res;
     }
 
 
