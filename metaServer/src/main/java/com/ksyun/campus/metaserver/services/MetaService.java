@@ -6,8 +6,11 @@ import com.ksyun.campus.metaserver.cache.ServerInfoCache;
 import com.ksyun.campus.metaserver.domain.FileType;
 import com.ksyun.campus.metaserver.domain.ReplicaData;
 import com.ksyun.campus.metaserver.domain.StatInfo;
+import com.ksyun.campus.metaserver.entity.DataTransferInfo;
 import com.ksyun.campus.metaserver.entity.ServerInfo;
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.data.Stat;
 import org.checkerframework.checker.units.qual.Current;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
@@ -31,18 +34,28 @@ public class MetaService {
     @Autowired
     private ServerInfoCache cache;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private ForwardService forwardService;
+
+    final String ZK_REGISTRY_PATH = "/metaServer"; // 实例注册的路径
+
+
     /**
      * 从注册的数据服务器列表中选择一个数据服务器
+     *
      * @return 选中的数据服务器IP
      */
-    public String pickDataServer(){
+    public String pickDataServer() {
         // todo 通过zk内注册的ds列表，选择出来一个ds，用来后续的wirte
         // 需要考虑选择ds的策略？负载
         try {
-            List<String> dolist = client.getChildren().forPath("/dataServer");
-            byte[] catchData = client.getData().forPath("/dataServer/" + random(dolist));
+            List<String> dolist = client.getChildren().forPath(ZK_REGISTRY_PATH);
+            byte[] catchData = client.getData().forPath(ZK_REGISTRY_PATH + random(dolist));
             ObjectMapper objectMapper = new ObjectMapper();
-            ServerInfo service = objectMapper.convertValue(catchData, ServerInfo.class);
+            ServerInfo service = objectMapper.readValue(catchData, ServerInfo.class);
             return service.getIp() + ":" + service.getPort();
         } catch (Exception e) {
             e.printStackTrace();
@@ -72,11 +85,6 @@ public class MetaService {
             }
         }
 
-        if (file.exists()) {
-            System.err.println("File already exists: " + path);
-            return false;
-        }
-
         try {
             boolean created = file.createNewFile();
             if (!created) {
@@ -91,109 +99,109 @@ public class MetaService {
         return true;
     }
 
-    public boolean mkdir(String fileSystem, String path) {
-        File directory = new File(path);
-
-        if (directory.exists()) {
-            System.err.println("Directory already exists: " + path);
-            return false;
-        }
-
-        boolean created = directory.mkdirs();
-        if (!created) {
-            System.err.println("Failed to create directory: " + path);
-            return false;
-        }
-
-        return true;
-    }
-
-    public List<String> listdir(String fileSystem, String path) {
-        File directory = new File(path);
-
-        if (!directory.exists()) {
-            System.err.println("Directory does not exist: " + path);
-            return null;
-        }
-
-        if (!directory.isDirectory()) {
-            System.err.println("Given path is not a directory: " + path);
-            return null;
-        }
-
-        File[] files = directory.listFiles();
-        List<String> fileList = new ArrayList<>();
-        if (files != null) {
-            for (File file : files) {
-                fileList.add(file.getName());
-            }
-        }
-
-        return fileList;
-    }
-
-    public boolean delete(String fileSystem, String path) {
-        File file = new File(path);
-
-        if (!file.exists()) {
-            System.err.println("File or directory does not exist: " + path);
-            return false;
-        }
-
-        boolean deleted = false;
-        if (file.isDirectory()) {
-            deleted = deleteDirectory(file);
-        } else {
-            deleted = file.delete();
-        }
-
-        if (!deleted) {
-            System.err.println("Failed to delete: " + path);
-            return false;
-        }
-
-        return true;
-    }
-
-    private boolean deleteDirectory(File directory) {
-        File[] files = directory.listFiles();
-        if (files != null) {
-            for (File file : files) {
-                if (file.isDirectory()) {
-                    deleteDirectory(file);
-                } else {
-                    file.delete();
+    public boolean mkdir(String path) {
+        boolean allRequestsSuccessful = true;
+        // 逐级创建节点，并存储数据
+        String[] pathParts = path.split("/");
+        StringBuilder pathBuilder = new StringBuilder(ZK_REGISTRY_PATH);
+        List<ReplicaData> randomServerInfos = cache.getRandomServerInfos(3);
+        for (String part : pathParts) {
+            if (!part.isEmpty()) {
+                pathBuilder.append("/").append(part);
+                String nodePath = pathBuilder.toString();
+                StatInfo statInfo = creatDirStatInfo(nodePath, randomServerInfos);
+                // 检查节点是否存在
+                try {
+                    System.out.println(nodePath);
+                    // 检查节点是否存在
+                    if (client.checkExists().forPath(nodePath) != null) continue;
+                    String data = objectMapper.writeValueAsString(statInfo);
+                    // 创建临时顺序节点，并存储数据
+                    String createdNodePath = client
+                            .create()
+                            .forPath(nodePath, data.getBytes());
+                    System.out.println("Created node: " + createdNodePath);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return false;
                 }
             }
         }
-        return directory.delete();
+        for (ReplicaData e : randomServerInfos) {
+            HttpStatus statusCode = forwardService.call(e.getDsNode(), "mkdir", path).getStatusCode();
+            System.out.println(statusCode);
+            if (statusCode != HttpStatus.OK) {
+                allRequestsSuccessful = false;
+                break; // Exit the loop since we encountered a failure
+            }
+        }
+
+        return allRequestsSuccessful;
+    }
+
+    public StatInfo creatDirStatInfo(String path, List<ReplicaData> replicaDatas) {
+        StatInfo statInfo = new StatInfo();
+        statInfo.setPath(path);
+        statInfo.setMtime(System.currentTimeMillis());
+        statInfo.setSize(0);
+        statInfo.setType(FileType.Directory);
+        replicaDatas.forEach(e -> {
+            String[] site = e.getId().split("_");
+            String dataPath = "/" + site[0] + "/" + site[1] + path;
+            e.setPath(dataPath);
+        });
+        statInfo.setReplicaData(replicaDatas);
+        return statInfo;
+    }
+
+    public List<String> listdir(String path) {
+        try {
+            List<String> children = client.getChildren().forPath(ZK_REGISTRY_PATH + path);
+            return children;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public boolean delete(String path) {
+        // 获取当前节点的子节点
+
+        // 不存在子节点，删除当前节点
+        try {
+            int childrenCount = client.getChildren().forPath(ZK_REGISTRY_PATH + path).size();
+
+            if (childrenCount == 0) {
+                client.delete().forPath(ZK_REGISTRY_PATH + path);
+            } else {
+                return false;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
     }
 
     /**
      * 在选定的数据服务器上写入文件
-     * @param fileSystem 文件系统标识
-     * @param path 文件路径
-     * @param offset 写入起始偏移量
-     * @param length 写入长度
+     *
+     * @param fileSystem       文件系统标识
+     * @param dataTransferInfo 文件信息
      * @return 写入是否成功
      */
-    public boolean write(String fileSystem, String path, int offset, int length) {
+    public boolean write(String fileSystem, DataTransferInfo dataTransferInfo) {
         String dataIp = pickDataServer();
         String uri = String.format("http://%s/write", dataIp);
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.setContentType(MediaType.APPLICATION_JSON);
         httpHeaders.set("fileSystem", fileSystem);
         ObjectMapper mapper = new ObjectMapper();
-        Map<String, Object> requestData = new HashMap<>();
-
-        requestData.put("path", path);
-        requestData.put("offset", offset);
-        requestData.put("length", length);
 
         String requestBody = null;
 
         try {
-            requestBody = mapper.writeValueAsString(requestData);
+            requestBody = mapper.writeValueAsString(dataTransferInfo);
         } catch (JsonProcessingException e) {
             e.printStackTrace();
             return false;
@@ -214,26 +222,18 @@ public class MetaService {
         return true;
     }
 
-    private static final String DATA_PATH = "/dataServer";
-    public StatInfo getStats(String fileSystem, String path) {
-        File file = new File(path);
-        StatInfo statInfo = new StatInfo();
-        statInfo.setPath(path);
-        statInfo.setSize(file.length());
-        statInfo.setType(file.isFile() ? FileType.File : FileType.Directory);
-        statInfo.setMtime(System.currentTimeMillis());
-        List<ReplicaData> list = new ArrayList<>();
-
-        for (String key : cache.getAllPaths()) {
-            ServerInfo serverInfo = cache.get(key);
-            ReplicaData replicaData = new ReplicaData();
-            replicaData.setPath(key);
-            replicaData.setId(serverInfo.getRack() + "_" + serverInfo.getZone());
-            replicaData.setDsNode(serverInfo.getIp() + ":" + serverInfo.getPort());
-            list.add(replicaData);
+    public StatInfo getStats(String path) {
+        String res = "";
+        StatInfo statInfo = null;
+        try {
+            byte[] data = client.getData().forPath("/metaServer" + path);
+            res = new String(data);
+            System.out.println(res);
+            statInfo = objectMapper.readValue(res, StatInfo.class);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
-
-        statInfo.setReplicaData(list);
         return statInfo;
     }
 }
