@@ -41,17 +41,18 @@ public class ServerInfoCache {
     public List<ReplicaData> getRandomServerInfos(int count) {
         List<ReplicaData> result = new ArrayList<>();
 
-        List<String> keys = new ArrayList<>(cache.keySet());
+        Set<Integer> selectedIndices = new HashSet<>();
         Random random = new Random();
 
-        int keysCount = keys.size();
-        if (count > keysCount) {
-            count = keysCount; // 保证不超过缓存中的数量
+        while (selectedIndices.size() < count) {
+            int randomIndex = random.nextInt(cache.size());
+            selectedIndices.add(randomIndex);
         }
 
-        for (int i = 0; i < count; i++) {
-            int randomIndex = random.nextInt(keysCount);
-            String randomKey = keys.get(randomIndex);
+        List<String> keys = new ArrayList<>(cache.keySet());
+
+        for (Integer index : selectedIndices) {
+            String randomKey = keys.get(index);
             ServerInfo serverInfo = cache.get(randomKey);
             ReplicaData replicaData = new ReplicaData();
             replicaData.setPath(randomKey);
