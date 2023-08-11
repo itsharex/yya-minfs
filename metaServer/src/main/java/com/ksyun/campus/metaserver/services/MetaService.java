@@ -40,7 +40,7 @@ public class MetaService {
     @Autowired
     private ForwardService forwardService;
 
-    final String ZK_REGISTRY_PATH = "/metaServer"; // 实例注册的路径
+    final String ZK_REGISTRY_PATH = "/metaServer/data"; // 实例注册的路径
 
 
     /**
@@ -74,28 +74,6 @@ public class MetaService {
 
     //创建文件
     public boolean create(String fileSystem, String path) {
-        File file = new File(path);
-        File parentDirectory = file.getParentFile();
-
-        if (!parentDirectory.exists()) {
-            boolean created = parentDirectory.mkdirs();
-            if (!created) {
-                System.err.println("Failed to create parent directories for: " + path);
-                return false;
-            }
-        }
-
-        try {
-            boolean created = file.createNewFile();
-            if (!created) {
-                System.err.println("Failed to create file: " + path);
-                return false;
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            return false;
-        }
-
         return true;
     }
 
@@ -154,10 +132,19 @@ public class MetaService {
         return statInfo;
     }
 
-    public List<String> listdir(String path) {
+    public List<StatInfo> listdir(String path) {
         try {
+            List<StatInfo> res = new ArrayList<>();
             List<String> children = client.getChildren().forPath(ZK_REGISTRY_PATH + path);
-            return children;
+            for (String e : children) {
+                System.out.println(e);
+                byte[] bytes = client.getData().forPath(ZK_REGISTRY_PATH + path + "/" + e);
+                String data = new String(bytes);
+                System.out.println(data);
+                StatInfo statInfo = objectMapper.readValue(data, StatInfo.class);
+                res.add(statInfo);
+            }
+            return res;
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -191,34 +178,6 @@ public class MetaService {
      * @return 写入是否成功
      */
     public boolean write(String fileSystem, DataTransferInfo dataTransferInfo) {
-        String dataIp = pickDataServer();
-        String uri = String.format("http://%s/write", dataIp);
-        HttpHeaders httpHeaders = new HttpHeaders();
-        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
-        httpHeaders.set("fileSystem", fileSystem);
-        ObjectMapper mapper = new ObjectMapper();
-
-        String requestBody = null;
-
-        try {
-            requestBody = mapper.writeValueAsString(dataTransferInfo);
-        } catch (JsonProcessingException e) {
-            e.printStackTrace();
-            return false;
-        }
-
-        RestTemplate restTemplate = new RestTemplate();
-        HttpEntity<String> entity = new HttpEntity<>(requestBody, httpHeaders);
-        try {
-            ResponseEntity<String> response = restTemplate.exchange(uri, HttpMethod.POST, entity, String.class);
-            if (response.getStatusCode() != HttpStatus.OK) {
-                return false;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
-
         return true;
     }
 

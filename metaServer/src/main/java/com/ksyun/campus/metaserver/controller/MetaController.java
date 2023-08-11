@@ -43,7 +43,7 @@ public class MetaController {
     }
     @RequestMapping("listdir")
     public ResponseEntity listdir(@RequestParam String path){
-        List<String> list = metaService.listdir(path);
+        List<StatInfo> list = metaService.listdir(path);
         if(list == null) {
             return new ResponseEntity<>("KeeperErrorCode = NoNode for " + path, HttpStatus.valueOf(500));
 

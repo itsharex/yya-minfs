@@ -9,6 +9,7 @@ import com.ksyun.campus.client.domain.StatInfo;
 import com.ksyun.campus.client.util.JacksonMapper;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 import java.net.URLEncoder;
 import java.util.ArrayList;
@@ -41,21 +42,20 @@ public class EFileSystem extends FileSystem{
         return status == HttpStatus.OK ? true : false;
     }
     public StatInfo getFileStats(String path){
-        HttpEntity entity = this.callRemote(path, "stats", null);
+        ResponseEntity<String> entity = this.callRemote(path, "stats", null);
+        if(entity.getStatusCode() != HttpStatus.OK) {
+            return null;
+        }
         // 从JSON字符串转换为StatInfo对象
         JacksonMapper INSTANCE = new JacksonMapper(JsonInclude.Include.NON_NULL);
-        StatInfo statInfo = INSTANCE.fromJson((String) entity.getBody(), StatInfo.class);
+        StatInfo statInfo = INSTANCE.fromJson(entity.getBody(), StatInfo.class);
         return statInfo; // 返回获取到的StatInfo对象
     }
     public List<StatInfo> listFileStats(String path){
         HttpEntity entity = this.callRemote(path, "listdir", null);
         JacksonMapper INSTANCE = new JacksonMapper(JsonInclude.Include.NON_NULL);
-        List<String> fileList = INSTANCE.fromJson((String) entity.getBody(), List.class);
-        List<StatInfo> StatInfos = new ArrayList<>();
-        fileList.forEach(e -> {
-            StatInfos.add(getFileStats(path + "/" + e));
-        });
-        return StatInfos;
+        List<StatInfo> fileList = INSTANCE.fromJson((String) entity.getBody(), new TypeReference<List<StatInfo>>() {});
+        return fileList;
     }
     public ClusterInfo getClusterInfo(){
         return null;

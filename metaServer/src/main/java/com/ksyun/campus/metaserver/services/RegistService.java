@@ -44,6 +44,11 @@ public class RegistService implements ApplicationRunner {
             client.create().forPath(ZK_REGISTRY_PATH);
         }
 
+        // 创建存储节点（如果不存在）
+        if (client.checkExists().forPath(ZK_REGISTRY_PATH + "/data") == null) {
+            client.create().forPath(ZK_REGISTRY_PATH + "/data");
+        }
+
         // 创建实例临时顺序节点
         byte[] instanceData = getInstanceData().getBytes(StandardCharsets.UTF_8);
 
