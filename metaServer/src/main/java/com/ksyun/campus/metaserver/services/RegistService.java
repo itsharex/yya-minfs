@@ -26,6 +26,9 @@ public class RegistService implements ApplicationRunner {
     @Value("${server.port}")
     private int prot;
 
+    @Value("${meta.type}")
+    private String type;
+
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -35,9 +38,10 @@ public class RegistService implements ApplicationRunner {
     @Autowired
     private ServerInfoCache cache;
 
+
     final String ZK_REGISTRY_PATH = "/metaServer"; // 实例注册的路径
-    final String instanceNode = ZK_REGISTRY_PATH + "/with-port-" + prot;
     final String META_PATH = ZK_REGISTRY_PATH + "/data";
+    final String SERVER_PATH = ZK_REGISTRY_PATH + "/server";
 
     public void registToCenter() throws Exception {
         // todo 将本实例信息注册至zk中心，包含信息 ip、port
@@ -53,6 +57,11 @@ public class RegistService implements ApplicationRunner {
             client.create().forPath(META_PATH);
         }
 
+        // 创建父节点（如果不存在）
+        if (client.checkExists().forPath(SERVER_PATH) == null) {
+            client.create().forPath(SERVER_PATH);
+        }
+
         // 创建实例临时顺序节点
         byte[] instanceData = getInstanceData().getBytes(StandardCharsets.UTF_8);
 
@@ -60,7 +69,7 @@ public class RegistService implements ApplicationRunner {
         client.create()
                 .creatingParentsIfNeeded() // 如果父节点不存在，自动创建
                 .withMode(CreateMode.EPHEMERAL) // 创建临时节点
-                .forPath(instanceNode, instanceData);
+                .forPath(SERVER_PATH + "/" + type, instanceData);
 
         // 应用程序保持运行状态，直到被中断
         client.blockUntilConnected();
@@ -117,7 +126,7 @@ public class RegistService implements ApplicationRunner {
     }
 
     public ServerInfo getCurrentNodeData() throws Exception {
-        byte[] childData = client.getData().forPath(instanceNode);
+        byte[] childData = client.getData().forPath(SERVER_PATH + "/" + type);
         if (childData != null) {
             String json = new String(childData, StandardCharsets.UTF_8);
             return objectMapper.readValue(json, ServerInfo.class);
