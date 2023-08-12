@@ -38,7 +38,7 @@ public class EFileSystem extends FileSystem{
             throw new IOException("文件不存在！");
         }
         if (path.endsWith("/")) {
-            path.substring(0, path.length() - 1);
+            path = path.substring(0, path.length() - 1);
         }
         ResponseEntity<String> open = this.callRemote(path, "open", null);
         FSInputStream fsInputStream = new FSInputStream(path, this, open.getBody());
@@ -49,7 +49,7 @@ public class EFileSystem extends FileSystem{
             throw new IOException("请不要重复创建！");
         }
         if (path.endsWith("/")) {
-            path.substring(0, path.length() - 1);
+            path = path.substring(0, path.length() - 1);
         }
         HttpStatus status = this.callRemote(path, "create", null).getStatusCode();
         if(status != HttpStatus.OK) {
@@ -67,6 +67,9 @@ public class EFileSystem extends FileSystem{
         return status == HttpStatus.OK ? true : false;
     }
     public StatInfo getFileStats(String path){
+        if (path.endsWith("/")) {
+            path = path.substring(0, path.length() - 1);
+        }
         ResponseEntity<String> entity = this.callRemote(path, "stats", null);
         if(entity.getStatusCode() != HttpStatus.OK) {
             return null;

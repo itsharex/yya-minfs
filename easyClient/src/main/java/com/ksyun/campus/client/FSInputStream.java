@@ -22,7 +22,7 @@ public class FSInputStream extends InputStream {
         this.fileSystem = fileSystem;
         this.dataPath = dataPath;
         this.readPosition = 0;
-        this.localBuffer = new byte[1024 * 1024];
+        this.localBuffer = new byte[1024];
         this.localBufferPosition = 0;
         fillLocalBuffer();
     }
@@ -38,13 +38,12 @@ public class FSInputStream extends InputStream {
         }
 
         int byteValue = localBuffer[localBufferPosition] & 0xFF;
-        if(byteValue == 0) {
+        if (byteValue == 0) {
             return -1;
         }
         localBufferPosition++;
         return byteValue;
     }
-
 
     @Override
     public int read(byte[] b) throws IOException {
@@ -53,22 +52,33 @@ public class FSInputStream extends InputStream {
 
     @Override
     public int read(byte[] b, int off, int len) throws IOException {
-        DataTransferInfo dataTransferInfo = new DataTransferInfo();
-        dataTransferInfo.setPath(path);
-        dataTransferInfo.setOffset(readPosition); // 设置偏移量
-        dataTransferInfo.setLength(len);
-        ResponseEntity<String> data = fileSystem.forwardingPost(dataPath, "read", dataTransferInfo);
+        int bytesRead = 0;
+        while (bytesRead < len) {
+            if (localBufferPosition >= localBuffer.length) {
+                fillLocalBuffer();
 
-        if (data.getStatusCode() == HttpStatus.OK) {
-            byte[] responseData = data.getBody().getBytes();
-            if (responseData.length > 0) {
-                System.arraycopy(responseData, 0, b, off, responseData.length);
-                readPosition += responseData.length; // 更新已读取的位置
-                return responseData.length;
+                if (localBufferPosition >= localBuffer.length) {
+                    break; // 缓冲区中没有更多数据可读
+                }
+            }
+
+            int bytesToCopy = Math.min(len - bytesRead, localBuffer.length - localBufferPosition);
+            System.arraycopy(localBuffer, localBufferPosition, b, off + bytesRead, bytesToCopy);
+            localBufferPosition += bytesToCopy;
+            bytesRead += bytesToCopy;
+        }
+
+        // 如果本地缓存中还没有足够的数据，尝试从远程获取
+        if (bytesRead < len) {
+            int remoteBytesRead = read(b, off + bytesRead, len - bytesRead);
+            if (remoteBytesRead > 0) {
+                bytesRead += remoteBytesRead;
+            } else if (bytesRead == 0) {
+                bytesRead = -1; // 没有更多数据可读
             }
         }
 
-        return -1;
+        return bytesRead;
     }
 
     // 在本地缓存中填充数据
@@ -84,7 +94,7 @@ public class FSInputStream extends InputStream {
             if (responseData.length > 0) {
                 System.arraycopy(responseData, 0, localBuffer, 0, responseData.length);
                 localBufferPosition = 0;
-                readPosition += responseData.length;
+                readPosition += responseData.length; // 更新已读取的位置
             }
         }
     }
@@ -92,6 +102,9 @@ public class FSInputStream extends InputStream {
     @Override
     public void close() throws IOException {
         // 可以在这里进行资源的释放
+        this.readPosition = 0;
+        this.localBuffer = new byte[1024];
+        this.localBufferPosition = 0;
         super.close();
     }
 }
