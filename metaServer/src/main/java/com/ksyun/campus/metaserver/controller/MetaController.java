@@ -19,7 +19,7 @@ public class MetaController {
     private MetaService metaService;
 
     @RequestMapping("stats")
-    public ResponseEntity stats(@RequestHeader String fileSystem,@RequestParam String path){
+    public ResponseEntity stats(@RequestParam String path){
         StatInfo statInfo = metaService.getStats(path);
         if(statInfo == null) {
             return new ResponseEntity<>("无stats", HttpStatus.valueOf(500));
