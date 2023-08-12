@@ -56,7 +56,7 @@ public class DataService {
             fos.close();
             System.out.println("Data has been written to the file.");
             ServerInfo currentNodeData = registService.getCurrentNodeData();
-            currentNodeData.setUseCapacity(currentNodeData.getCapacity() + dataTransferInfo.getData().length);
+            currentNodeData.setUseCapacity(currentNodeData.getUseCapacity() + dataTransferInfo.getData().length);
             registService.updateNodeData(currentNodeData);
             return true;
         } catch (Exception e) {
