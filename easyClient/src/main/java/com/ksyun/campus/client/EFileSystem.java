@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class EFileSystem extends FileSystem{
 
@@ -27,7 +28,9 @@ public class EFileSystem extends FileSystem{
     }
 
     public FSInputStream open(String path){
-        return null;
+        ResponseEntity<String> open = this.callRemote(path, "open", null);
+        FSInputStream fsInputStream = new FSInputStream(path, this, open.getBody());
+        return fsInputStream;
     }
     public FSOutputStream create(String path){
         if (path.endsWith("/")) {

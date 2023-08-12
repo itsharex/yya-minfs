@@ -40,6 +40,9 @@ public class MetaService {
     @Autowired
     private ForwardService forwardService;
 
+    @Autowired
+    private RegistService registService;
+
     final String ZK_REGISTRY_PATH = "/metaServer/data"; // 实例注册的路径
 
 
@@ -228,12 +231,23 @@ public class MetaService {
     /**
      * 在选定的数据服务器上写入文件
      *
-     * @param fileSystem       文件系统标识
      * @param dataTransferInfo 文件信息
      * @return 写入是否成功
      */
-    public boolean write(String fileSystem, DataTransferInfo dataTransferInfo) {
-        return true;
+    public boolean write(DataTransferInfo dataTransferInfo) {
+        StatInfo statInfo = getStats(dataTransferInfo.getPath());
+        List<String> ipList = statInfo.getDsNodes();
+        boolean isSuccessful = true;
+        for (String ip : ipList) {
+            ResponseEntity write = forwardService.call(ip, "write", dataTransferInfo);
+            if (write.getStatusCode() != HttpStatus.OK) {
+                isSuccessful = false;
+            }
+        }
+        statInfo.setMtime(System.currentTimeMillis());
+        statInfo.setSize(statInfo.getSize() + dataTransferInfo.getData().length);
+        registService.updateNodeData(dataTransferInfo.getPath(), statInfo);
+        return isSuccessful;
     }
 
     public StatInfo getStats(String path) {

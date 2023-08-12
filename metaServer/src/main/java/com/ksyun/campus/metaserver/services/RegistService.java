@@ -3,10 +3,12 @@ package com.ksyun.campus.metaserver.services;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ksyun.campus.metaserver.cache.ServerInfoCache;
+import com.ksyun.campus.metaserver.domain.StatInfo;
 import com.ksyun.campus.metaserver.entity.ServerInfo;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.cache.*;
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.data.Stat;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
@@ -33,11 +35,13 @@ public class RegistService implements ApplicationRunner {
     @Autowired
     private ServerInfoCache cache;
 
+    final String ZK_REGISTRY_PATH = "/metaServer"; // 实例注册的路径
+    final String instanceNode = ZK_REGISTRY_PATH + "/with-port-" + prot;
+    final String META_PATH = ZK_REGISTRY_PATH + "/data";
+
     public void registToCenter() throws Exception {
         // todo 将本实例信息注册至zk中心，包含信息 ip、port
         // 创建 CuratorFramework 客户端
-        String ZK_REGISTRY_PATH = "/metaServer"; // 实例注册的路径
-        String instanceNode = ZK_REGISTRY_PATH + "/with-port-" + prot;
 
         // 创建父节点（如果不存在）
         if (client.checkExists().forPath(ZK_REGISTRY_PATH) == null) {
@@ -45,8 +49,8 @@ public class RegistService implements ApplicationRunner {
         }
 
         // 创建存储节点（如果不存在）
-        if (client.checkExists().forPath(ZK_REGISTRY_PATH + "/data") == null) {
-            client.create().forPath(ZK_REGISTRY_PATH + "/data");
+        if (client.checkExists().forPath(META_PATH) == null) {
+            client.create().forPath(META_PATH);
         }
 
         // 创建实例临时顺序节点
@@ -110,6 +114,24 @@ public class RegistService implements ApplicationRunner {
         serverInfo.setIp(IP);
         serverInfo.setPort(prot);
         return objectMapper.writeValueAsString(serverInfo);
+    }
+
+    public ServerInfo getCurrentNodeData() throws Exception {
+        byte[] childData = client.getData().forPath(instanceNode);
+        if (childData != null) {
+            String json = new String(childData, StandardCharsets.UTF_8);
+            return objectMapper.readValue(json, ServerInfo.class);
+        }
+        return null;
+    }
+
+    public void updateNodeData(String path, StatInfo statInfo){
+        try {
+            client.setData().forPath(META_PATH + path, objectMapper.writeValueAsBytes(statInfo));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
     }
 
     @Override

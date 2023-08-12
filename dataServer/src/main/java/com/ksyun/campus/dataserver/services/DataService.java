@@ -23,7 +23,7 @@ public class DataService {
     @Autowired
     private RegistService registService;
 
-    public void write(DataTransferInfo dataTransferInfo){
+    public boolean write(DataTransferInfo dataTransferInfo){
         //todo 写本地
         //todo 调用远程ds服务写接口，同步副本，已达到多副本数量要求
         //todo 选择策略，按照 az rack->zone 的方式选取，将三副本均分到不同的az下
@@ -55,8 +55,13 @@ public class DataService {
             // 关闭 FileOutputStream
             fos.close();
             System.out.println("Data has been written to the file.");
+            ServerInfo currentNodeData = registService.getCurrentNodeData();
+            currentNodeData.setUseCapacity(currentNodeData.getCapacity() + dataTransferInfo.getData().length);
+            registService.updateNodeData(currentNodeData);
+            return true;
         } catch (Exception e) {
             e.printStackTrace();
+            return false;
         }
 
 
@@ -94,52 +99,38 @@ public class DataService {
         }
     }
 
-    public byte[] read(String path,int offset,int length){
+    public byte[] read(DataTransferInfo dataTransferInfo){
         //todo 根据path读取指定大小的内容
-        File file = new File(path);
-        if (!file.exists()) {
-            log.error("文件不存在: {}", path);
-            return null;
-        }
-
-        if (!file.isFile()) {
-            log.error("给定路径不是一个文件: {}", path);
-            return null;
-        }
-
-        try (FileInputStream fileInputStream = new FileInputStream(file);){
-            long skipped = fileInputStream.skip(offset);
-            if (skipped != offset) {
-                log.error("无法跳过请求的字节数.");
-                return null;
-            }
-
-            byte[] buffer = new byte[length];
-            int bytesRead = fileInputStream.read(buffer);
-
-            if (bytesRead == -1) {
-                log.error("已到达文件末尾.");
-                return null;
-            }
-            return buffer;
-        }catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    public void otherWrite() {
+        File file = new File(dataTransferInfo.getPath());
         try {
-            List<String> dslist = registService.getDslist();
-//            dslist.forEach(e -> {
-//                forwardingPost(e, dataTransferInfo);
-//            });
+            // 创建一个 FileInputStream 对象来读取文件
+            FileInputStream fis = new FileInputStream(file);
+
+            // 跳过偏移量
+            fis.skip(dataTransferInfo.getOffset());
+
+            int len = 0;
+            if(dataTransferInfo.getLength() != 0) {
+                len = dataTransferInfo.getLength();
+            } else {
+                len = dataTransferInfo.getData().length;
+            }
+            // 创建一个字节数组来存储读取的数据
+            byte[] data = new byte[len];
+
+            // 读取数据到字节数组
+            int bytesRead = fis.read(data);
+
+            // 关闭 FileInputStream
+            fis.close();
+
+            return data;
         } catch (Exception e) {
             e.printStackTrace();
+            return null; // 发生异常
         }
-
-
     }
+
 
     public boolean mkdir(String path) {
         File directory = new File(path);
@@ -147,17 +138,23 @@ public class DataService {
         return true;
     }
 
-    public boolean create(String pre) throws IOException {
+    public boolean create(String pre) throws Exception {
         File file = new File(pre);
         mkdir(file.getParent());
         file.createNewFile();
+        ServerInfo currentNodeData = registService.getCurrentNodeData();
+        currentNodeData.setFileTotal(currentNodeData.getFileTotal() + 1);
+        registService.updateNodeData(currentNodeData);
         return true;
     }
 
-    public boolean delete(String pre) {
+    public boolean delete(String pre) throws Exception {
         File file = new File(pre);
         if (file.exists()) {
             if (file.delete()) {
+                ServerInfo currentNodeData = registService.getCurrentNodeData();
+                currentNodeData.setFileTotal(currentNodeData.getFileTotal() - 1);
+                registService.updateNodeData(currentNodeData);
                 return true;
             } else {
                 return false;

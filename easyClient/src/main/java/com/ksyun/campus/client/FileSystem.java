@@ -1,6 +1,7 @@
 package com.ksyun.campus.client;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.ksyun.campus.client.domain.DataTransferInfo;
 import com.ksyun.campus.client.util.JacksonMapper;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
@@ -17,9 +18,9 @@ public abstract class FileSystem {
 
     protected ResponseEntity callRemote(String path, String type, Object param) {
         if(param == null) {
-            return forwardingGet("http://localhost:8000", path, type);
+            return forwardingGet("127.0.0.1:8000", path, type);
         } else {
-            return forwardingPost("http://localhost:8000", path, type, param);
+            return forwardingPost("127.0.0.1:8000", type, param);
         }
 
     }
@@ -32,12 +33,20 @@ public abstract class FileSystem {
      * @param interfaceName 接口名称
      * @return 转发后接口的响应结果
      */
-    private ResponseEntity forwardingGet(String url, String path, String interfaceName) {
+    protected ResponseEntity forwardingGet(String url, String path, String interfaceName) {
         try {
             // 使用UriComponentsBuilder构建URL
-            UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(url);
-            uriBuilder.pathSegment(interfaceName);
-            uriBuilder.queryParam("path", path);
+            String[] parts = url.split(":");
+
+            String host = parts[0];
+            int port = Integer.parseInt(parts[1]);
+
+            UriComponentsBuilder uriBuilder = UriComponentsBuilder.newInstance();
+            uriBuilder.scheme("http") // 设置协议为http
+                    .host(host)
+                    .port(port)
+                    .pathSegment(interfaceName)
+                    .queryParam("path", path);
 
             RestTemplate restTemplate = new RestTemplate();
             HttpHeaders httpHeaders = new HttpHeaders();
@@ -64,15 +73,22 @@ public abstract class FileSystem {
      * post的请求转发方法，根据给定的接口URL和参数，进行请求转发并返回响应结果
      *
      * @param url           接口URL
-     * @param path          请求参数对象
      * @param interfaceName 接口名称
      * @return 转发后接口的响应结果
      */
-    private ResponseEntity forwardingPost(String url, String path, String interfaceName, Object param) {
+    protected ResponseEntity forwardingPost(String url, String interfaceName, Object param) {
         try {
             // 使用UriComponentsBuilder构建URL
-            UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(url);
-            uriBuilder.pathSegment(interfaceName);
+            String[] parts = url.split(":");
+
+            String host = parts[0];
+            int port = Integer.parseInt(parts[1]);
+
+            UriComponentsBuilder uriBuilder = UriComponentsBuilder.newInstance();
+            uriBuilder.scheme("http") // 设置协议为http
+                    .host(host)
+                    .port(port)
+                    .pathSegment(interfaceName);
 
             RestTemplate restTemplate = new RestTemplate();
             HttpHeaders httpHeaders = new HttpHeaders();

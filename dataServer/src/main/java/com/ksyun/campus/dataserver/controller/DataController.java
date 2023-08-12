@@ -38,7 +38,7 @@ public class DataController {
     }
 
     @RequestMapping("delete")
-    public ResponseEntity delete(@RequestBody String path) throws IOException {
+    public ResponseEntity delete(@RequestBody String path) throws Exception {
         String cleanedPath = path.replace("\"", "");
         String pre = "/" + rack + "/" + zone + cleanedPath;
         if(dataService.delete(pre)) {
@@ -49,7 +49,7 @@ public class DataController {
     }
 
     @RequestMapping("create")
-    public ResponseEntity create(@RequestBody String path) throws IOException {
+    public ResponseEntity create(@RequestBody String path) throws Exception {
         String cleanedPath = path.replace("\"", "");
         String pre = "/" + rack + "/" + zone + cleanedPath;
         if(dataService.create(pre)) {
@@ -70,21 +70,27 @@ public class DataController {
     public ResponseEntity writeFile(@RequestBody DataTransferInfo dataTransferInfo){
         String pre = "/" + rack + "/" + zone + dataTransferInfo.getPath();
         dataTransferInfo.setPath(pre);
-        dataService.write(dataTransferInfo);
+        boolean res = dataService.write(dataTransferInfo);
+        if(!res) {
+            return new ResponseEntity<>("插入数据失败！", HttpStatus.valueOf(500));
+        }
         return new ResponseEntity(HttpStatus.OK);
     }
 
     /**
      * 在指定本地磁盘路径下，读取指定大小的内容后返回
-     * @param fileSystem
-     * @param path
-     * @param offset
-     * @param length
      * @return
      */
     @RequestMapping("read")
-    public ResponseEntity readFile(@RequestHeader String fileSystem, @RequestParam String path, @RequestParam int offset, @RequestParam int length){
-        return new ResponseEntity(HttpStatus.OK);
+    public ResponseEntity readFile(@RequestBody DataTransferInfo dataTransferInfo){
+        String pre = "/" + rack + "/" + zone + dataTransferInfo.getPath();
+        dataTransferInfo.setPath(pre);
+
+        byte[] res = dataService.read(dataTransferInfo);
+        if(res == null) {
+            return new ResponseEntity<>("读取数据失败！", HttpStatus.valueOf(500));
+        }
+        return ResponseEntity.ok(res);
     }
     /**
      * 关闭退出进程

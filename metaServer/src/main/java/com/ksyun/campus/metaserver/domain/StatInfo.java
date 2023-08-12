@@ -2,6 +2,7 @@ package com.ksyun.campus.metaserver.domain;
 
 import lombok.Data;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -12,6 +13,14 @@ public class StatInfo
     public long mtime;
     public FileType type;
     public List<ReplicaData> replicaData;
+
+    public List<String> getDsNodes() {
+        List<String> res = new ArrayList<>();
+        replicaData.forEach(e -> {
+            res.add(e.dsNode);
+        });
+        return res;
+    }
 
     @Override
     public String toString() {

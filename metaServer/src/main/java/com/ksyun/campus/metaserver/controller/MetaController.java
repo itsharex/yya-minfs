@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Random;
 
 @RestController("/")
 public class MetaController {
@@ -61,12 +62,11 @@ public class MetaController {
 
     /**
      * 保存文件写入成功后的元数据信息，包括文件path、size、三副本信息等
-     * @param fileSystem
      * @return
      */
     @RequestMapping("write")
-    public ResponseEntity commitWrite(@RequestHeader String fileSystem, @RequestBody DataTransferInfo dataTransferInfo){
-        if(metaService.write(fileSystem, dataTransferInfo)) {
+    public ResponseEntity commitWrite(@RequestBody DataTransferInfo dataTransferInfo){
+        if(metaService.write(dataTransferInfo)) {
             return new ResponseEntity(HttpStatus.OK);
         } else {
             return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
@@ -75,13 +75,19 @@ public class MetaController {
 
     /**
      * 根据文件path查询三副本的位置，返回客户端具体ds、文件分块信息
-     * @param fileSystem
      * @param path
      * @return
      */
     @RequestMapping("open")
-    public ResponseEntity open(@RequestHeader String fileSystem,@RequestParam String path){
-        return new ResponseEntity(HttpStatus.OK);
+    public ResponseEntity open(@RequestParam String path){
+        StatInfo statInfo = metaService.getStats(path);
+        Random random = new Random();
+        String ip = statInfo.getDsNodes().get(random.nextInt(statInfo.getDsNodes().size()));
+        if(statInfo == null) {
+            return new ResponseEntity<>("无stats", HttpStatus.valueOf(500));
+
+        }
+        return new ResponseEntity(ip, HttpStatus.OK);
     }
 
     /**

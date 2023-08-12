@@ -25,7 +25,7 @@ public class RegistService implements ApplicationRunner {
 
     private static final Logger logger = LoggerFactory.getLogger(RegistService.class);
     private static final String IP = "127.0.0.1";
-    private static final int INITIAL_CAPACITY = 0;
+    private static final int INITIAL_CAPACITY = 100 * 1024 * 1024;
 
     @Value("${server.port}")
     private int port;
