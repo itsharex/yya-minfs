@@ -80,6 +80,9 @@ public class EFileSystem extends FileSystem{
         return statInfo; // 返回获取到的StatInfo对象
     }
     public List<StatInfo> listFileStats(String path){
+        if (path.endsWith("/")) {
+            path = path.substring(0, path.length() - 1);
+        }
         HttpEntity entity = this.callRemote(path, "listdir", null);
         JacksonMapper INSTANCE = new JacksonMapper(JsonInclude.Include.NON_NULL);
         List<StatInfo> fileList = INSTANCE.fromJson((String) entity.getBody(), new TypeReference<List<StatInfo>>() {});
