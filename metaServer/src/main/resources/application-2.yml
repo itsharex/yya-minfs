@@ -7,3 +7,5 @@ spring:
         core-size: 10
         max-size: 20
         queue-capacity: 1000
+meta:
+  type: slave
