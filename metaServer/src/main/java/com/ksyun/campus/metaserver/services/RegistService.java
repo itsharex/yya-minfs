@@ -26,8 +26,8 @@ public class RegistService implements ApplicationRunner {
     @Value("${server.port}")
     private int prot;
 
-    @Value("${meta.type}")
-    private String type;
+    @Value("${as.site}")
+    private String site;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -39,14 +39,14 @@ public class RegistService implements ApplicationRunner {
     private ServerInfoCache cache;
 
 
-    final String ZK_REGISTRY_PATH = "/metaServer"; // 实例注册的路径
-    final String META_PATH = ZK_REGISTRY_PATH + "/data";
-    final String SERVER_PATH = ZK_REGISTRY_PATH + "/server";
+    static final String ZK_REGISTRY_PATH = "/metaServer"; // 实例注册的路径
+    static final String META_PATH = ZK_REGISTRY_PATH + "/data";
+    static final String SERVER_PATH = ZK_REGISTRY_PATH + "/server";
 
     public void registToCenter() throws Exception {
         // todo 将本实例信息注册至zk中心，包含信息 ip、port
         // 创建 CuratorFramework 客户端
-
+        String instanceNode = SERVER_PATH + "/" + site;
         // 创建父节点（如果不存在）
         if (client.checkExists().forPath(ZK_REGISTRY_PATH) == null) {
             client.create().forPath(ZK_REGISTRY_PATH);
@@ -69,7 +69,7 @@ public class RegistService implements ApplicationRunner {
         client.create()
                 .creatingParentsIfNeeded() // 如果父节点不存在，自动创建
                 .withMode(CreateMode.EPHEMERAL) // 创建临时节点
-                .forPath(SERVER_PATH + "/" + type, instanceData);
+                .forPath(instanceNode, instanceData);
 
         // 应用程序保持运行状态，直到被中断
         client.blockUntilConnected();
@@ -113,9 +113,6 @@ public class RegistService implements ApplicationRunner {
 
         pathChildrenCache.getListenable().addListener(listener);
 
-        System.in.read(); // 暂停程序，保持监听状态
-        pathChildrenCache.close();
-        client.close();
     }
 
     // 获取实例数据
@@ -127,7 +124,8 @@ public class RegistService implements ApplicationRunner {
     }
 
     public ServerInfo getCurrentNodeData() throws Exception {
-        byte[] childData = client.getData().forPath(SERVER_PATH + "/" + type);
+        String instanceNode = SERVER_PATH + "/" + site;
+        byte[] childData = client.getData().forPath(instanceNode);
         if (childData != null) {
             String json = new String(childData, StandardCharsets.UTF_8);
             return objectMapper.readValue(json, ServerInfo.class);
