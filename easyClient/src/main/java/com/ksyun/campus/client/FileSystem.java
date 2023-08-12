@@ -14,7 +14,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.net.URI;
 
 public abstract class FileSystem {
-    private String fileSystem;
+    private String fileSystem = "";
 
     protected ResponseEntity callRemote(String path, String type, Object param) {
         if(param == null) {

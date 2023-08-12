@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -82,13 +83,19 @@ public class MetaController {
     public ResponseEntity open(@RequestParam String path){
         StatInfo statInfo = metaService.getStats(path);
         Random random = new Random();
-        String ip = statInfo.getDsNodes().get(random.nextInt(statInfo.getDsNodes().size()));
+        List<String> res = new ArrayList<>();
+        statInfo.getReplicaData().forEach(e -> {
+            res.add(e.dsNode);
+        });
+
+        String ip = res.get(random.nextInt(res.size()));
         if(statInfo == null) {
             return new ResponseEntity<>("无stats", HttpStatus.valueOf(500));
 
         }
         return new ResponseEntity(ip, HttpStatus.OK);
     }
+
 
     /**
      * 关闭退出进程

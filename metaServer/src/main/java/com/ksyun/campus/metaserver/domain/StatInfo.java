@@ -14,14 +14,6 @@ public class StatInfo
     public FileType type;
     public List<ReplicaData> replicaData;
 
-    public List<String> getDsNodes() {
-        List<String> res = new ArrayList<>();
-        replicaData.forEach(e -> {
-            res.add(e.dsNode);
-        });
-        return res;
-    }
-
     @Override
     public String toString() {
         return "StatInfo{" +

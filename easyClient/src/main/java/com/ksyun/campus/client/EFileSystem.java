@@ -28,6 +28,9 @@ public class EFileSystem extends FileSystem{
     }
 
     public FSInputStream open(String path){
+        if (path.endsWith("/")) {
+            path.substring(0, path.length() - 1);
+        }
         ResponseEntity<String> open = this.callRemote(path, "open", null);
         FSInputStream fsInputStream = new FSInputStream(path, this, open.getBody());
         return fsInputStream;

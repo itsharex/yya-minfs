@@ -236,7 +236,7 @@ public class MetaService {
      */
     public boolean write(DataTransferInfo dataTransferInfo) {
         StatInfo statInfo = getStats(dataTransferInfo.getPath());
-        List<String> ipList = statInfo.getDsNodes();
+        List<String> ipList = getDsNodes(statInfo);
         boolean isSuccessful = true;
         for (String ip : ipList) {
             ResponseEntity write = forwardService.call(ip, "write", dataTransferInfo);
@@ -248,6 +248,14 @@ public class MetaService {
         statInfo.setSize(statInfo.getSize() + dataTransferInfo.getData().length);
         registService.updateNodeData(dataTransferInfo.getPath(), statInfo);
         return isSuccessful;
+    }
+
+    public List<String> getDsNodes(StatInfo statInfo) {
+        List<String> res = new ArrayList<>();
+        statInfo.getReplicaData().forEach(e -> {
+            res.add(e.dsNode);
+        });
+        return res;
     }
 
     public StatInfo getStats(String path) {
