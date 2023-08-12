@@ -27,7 +27,10 @@ public class EFileSystem extends FileSystem{
         this.fileName = fileName;
     }
 
-    public FSInputStream open(String path){
+    public FSInputStream open(String path) throws IOException {
+        if (getFileStats(path) == null) {
+            throw new IOException("文件不存在！");
+        }
         if (path.endsWith("/")) {
             path.substring(0, path.length() - 1);
         }
@@ -35,7 +38,10 @@ public class EFileSystem extends FileSystem{
         FSInputStream fsInputStream = new FSInputStream(path, this, open.getBody());
         return fsInputStream;
     }
-    public FSOutputStream create(String path){
+    public FSOutputStream create(String path) throws IOException {
+        if (getFileStats(path) != null) {
+            throw new IOException("请不要重复创建！");
+        }
         if (path.endsWith("/")) {
             path.substring(0, path.length() - 1);
         }
