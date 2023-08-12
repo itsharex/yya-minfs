@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ksyun.campus.client.domain.DataTransferInfo;
 import com.ksyun.campus.client.domain.ServerInfo;
 import com.ksyun.campus.client.util.JacksonMapper;
+import com.ksyun.campus.client.util.ZkUtil;
 import org.apache.curator.framework.CuratorFramework;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
@@ -22,8 +23,6 @@ import java.net.URI;
 public abstract class FileSystem {
     private String fileSystem = "";
 
-    @Resource
-    private CuratorFramework curator;
 
     protected ResponseEntity callRemote(String path, String type, Object param) {
         String mateIp = getMateIp();
@@ -39,11 +38,19 @@ public abstract class FileSystem {
     final String SERVER_PATH = ZK_REGISTRY_PATH + "/server";
 
     private String getMateIp() {
+
         String res = "127.0.0.1:8000";
         try {
+            ZkUtil zkUtil = new ZkUtil();;
+            CuratorFramework curator = zkUtil.getClient();
             if (curator.checkExists().forPath(SERVER_PATH + "/master") == null) {
                 ObjectMapper objectMapper = new ObjectMapper();
                 byte[] bytes = curator.getData().forPath(SERVER_PATH + "/slave");
+                ServerInfo serverInfo = objectMapper.readValue(new String(bytes), ServerInfo.class);
+                res = serverInfo.getIp() + ":" +serverInfo.getPort();
+            } else {
+                ObjectMapper objectMapper = new ObjectMapper();
+                byte[] bytes = curator.getData().forPath(SERVER_PATH + "/master");
                 ServerInfo serverInfo = objectMapper.readValue(new String(bytes), ServerInfo.class);
                 res = serverInfo.getIp() + ":" +serverInfo.getPort();
             }

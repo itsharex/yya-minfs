@@ -4,12 +4,16 @@ package com.ksyun.campus.client;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ksyun.campus.client.domain.ClusterInfo;
-import com.ksyun.campus.client.domain.StatInfo;
+import com.ksyun.campus.client.cache.DataServerCache;
+import com.ksyun.campus.client.cache.MetaServerCache;
+import com.ksyun.campus.client.domain.*;
 import com.ksyun.campus.client.util.JacksonMapper;
+import com.ksyun.campus.client.util.ZkUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -17,9 +21,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+@Component
 public class EFileSystem extends FileSystem{
 
     private String fileName="default";
+
     public EFileSystem() {
     }
 
@@ -76,7 +82,41 @@ public class EFileSystem extends FileSystem{
         List<StatInfo> fileList = INSTANCE.fromJson((String) entity.getBody(), new TypeReference<List<StatInfo>>() {});
         return fileList;
     }
-    public ClusterInfo getClusterInfo(){
-        return null;
+    public ClusterInfo getClusterInfo() throws Exception {
+        ZkUtil zkUtil = new ZkUtil();
+        zkUtil.postCons();
+        MetaServerCache metaServerCache = MetaServerCache.getInstance();
+        DataServerCache dataServerCache = DataServerCache.getInstance();
+
+        ClusterInfo clusterInfo = new ClusterInfo();
+        if (metaServerCache.containsKey("/metaServer/server/master")) {
+            MetaServerMsg metaServerMsg = new MetaServerMsg();
+            ServerInfo master = metaServerCache.get("/metaServer/server/master");
+            metaServerMsg.setHost(master.getIp());
+            metaServerMsg.setPort(master.getPort());
+            clusterInfo.setMasterMetaServer(metaServerMsg);
+        }
+        if (metaServerCache.containsKey("/metaServer/server/slave")) {
+            MetaServerMsg metaServerMsg = new MetaServerMsg();
+            ServerInfo slave = metaServerCache.get("/metaServer/server/slave");
+            metaServerMsg.setHost(slave.getIp());
+            metaServerMsg.setPort(slave.getPort());
+            clusterInfo.setSlaveMetaServer(metaServerMsg);
+        }
+        List<ServerInfo> servers = dataServerCache.getServers();
+        List<DataServerMsg> dataList = new ArrayList<>();
+        for (ServerInfo serverInfo : servers) {
+            DataServerMsg dataServerMsg = new DataServerMsg();
+            dataServerMsg.setCapacity(serverInfo.getCapacity());
+            dataServerMsg.setFileTotal(serverInfo.getFileTotal());
+            dataServerMsg.setUseCapacity(serverInfo.getUseCapacity());
+            dataServerMsg.setPort(serverInfo.getPort());
+            dataServerMsg.setHost(serverInfo.getIp());
+            dataList.add(dataServerMsg);
+        }
+        clusterInfo.setDataServer(dataList);
+        metaServerCache.clear();
+        dataServerCache.clear();
+        return clusterInfo;
     }
 }
