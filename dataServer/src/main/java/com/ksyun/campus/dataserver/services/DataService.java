@@ -151,14 +151,13 @@ public class DataService {
     public boolean delete(String pre) throws Exception {
         File file = new File(pre);
         if (file.exists()) {
-            if (file.delete()) {
+            if (file.isFile()) {
                 ServerInfo currentNodeData = registService.getCurrentNodeData();
                 currentNodeData.setFileTotal(currentNodeData.getFileTotal() - 1);
                 registService.updateNodeData(currentNodeData);
-                return true;
-            } else {
-                return false;
             }
+
+            return file.delete();
         } else {
             return false;
         }

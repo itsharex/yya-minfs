@@ -63,6 +63,9 @@ public class EFileSystem extends FileSystem{
         return status == HttpStatus.OK ? true : false;
     }
     public boolean delete(String path){
+        if (path.endsWith("/")) {
+            path = path.substring(0, path.length() - 1);
+        }
         HttpStatus status = this.callRemote(path, "delete", null).getStatusCode();
         return status == HttpStatus.OK ? true : false;
     }
