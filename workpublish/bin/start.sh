@@ -21,12 +21,15 @@ function start_jar {
 }
 
 cd ../metaServer
+mkdir log
 
 # 启动metaServer并将日志保存到不同的文件
 start_jar "metaServer-1.0.jar" "./log/metaserver1.log"
 start_jar "metaServer-1.0.jar" "./log/metaserver2.log" "--spring.profiles.active=2"
 
 cd ../dataServer
+mkdir log
+
 # 启动dataServer并将日志保存到不同的文件
 start_jar "dataServer-1.0.jar" "./log/dataserver1.log"
 start_jar "dataServer-1.0.jar" "./log/dataserver2.log" "--spring.profiles.active=2"
