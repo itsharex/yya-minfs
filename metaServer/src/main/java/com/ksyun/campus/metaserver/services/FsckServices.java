@@ -25,7 +25,7 @@ public class FsckServices {
     @Scheduled(fixedRate = 30 * 60 * 1000) // 每隔 30 分钟执行一次
     public void fsckTask() {
         try {
-            FileHandler fileHandler = new FileHandler("log", true);
+            FileHandler fileHandler = new FileHandler("Fsck.log", true);
             SimpleFormatter simpleFormatter = new SimpleFormatter();
             fileHandler.setFormatter(simpleFormatter);
             logger.addHandler(fileHandler);
