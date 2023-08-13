@@ -154,6 +154,7 @@ public class DataService {
             if (file.isFile()) {
                 ServerInfo currentNodeData = registService.getCurrentNodeData();
                 currentNodeData.setFileTotal(currentNodeData.getFileTotal() - 1);
+                currentNodeData.setUseCapacity((int) (currentNodeData.getUseCapacity() - file.length()));
                 registService.updateNodeData(currentNodeData);
             }
 
