@@ -49,20 +49,26 @@
         </dependency>
     </dependencies>
     <build>
-
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>2.5.5</version>
                 <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.xxg.Main</mainClass>
+                        </manifest>
+                    </archive>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
                     <outputDirectory>
                         ../workpublish/easyClient
                     </outputDirectory>
                 </configuration>
-
             </plugin>
         </plugins>
-
     </build>
+
 </project>
