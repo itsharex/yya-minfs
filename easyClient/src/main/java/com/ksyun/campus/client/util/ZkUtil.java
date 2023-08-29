@@ -46,11 +46,9 @@ public class ZkUtil {
         }
     }
 
-
-    @PostConstruct
     public void postCons() throws Exception {
         CuratorFramework client = CuratorFrameworkFactory.builder()
-                .connectString("10.0.0.201:2181")
+                .connectString("8.130.138.230:2181")
                 .retryPolicy(new ExponentialBackoffRetry(1000, 3))
                 .build();
         client.start();
@@ -61,10 +59,9 @@ public class ZkUtil {
         client.close();
     }
 
-    @PostConstruct
     public CuratorFramework getClient() throws Exception {
         CuratorFramework client = CuratorFrameworkFactory.builder()
-                .connectString("10.0.0.201:2181")
+                .connectString("8.130.138.230:2181")
                 .retryPolicy(new ExponentialBackoffRetry(1000, 3))
                 .build();
         client.start();

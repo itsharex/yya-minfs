@@ -7,7 +7,7 @@ function start_jar {
     arguments="${@:3}"  # 从第三个参数开始，作为传递给JAR的参数
     
     while true; do
-        nohup java -jar -Dzookeeper.addr=10.0.0.201:2181 "$jar_name" $arguments > "$log_name" 2>&1 &
+        nohup java -jar -Dzookeeper.addr=8.130.138.230:2181 "$jar_name" $arguments > "$log_name" 2>&1 &
         pid=$!
         
         sleep 5  # 等待一段时间后检查进程是否运行

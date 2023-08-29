@@ -107,6 +107,10 @@ public class MetaService {
         try {
             byte[] bytes = client.getData().forPath(nodePath);
             StatInfo statInfo = objectMapper.readValue(new String(bytes), StatInfo.class);
+            String path2 = statInfo.getPath().replace("/metaServer/data", "");
+            System.out.println("path2");
+            System.out.println(path2);
+            statInfo.setPath(path2);
             statInfo.setType(FileType.File);
             String data = objectMapper.writeValueAsString(statInfo);
             // 检查节点是否存在
@@ -179,8 +183,10 @@ public class MetaService {
         statInfo.setType(FileType.Directory);
         replicaDatas.forEach(e -> {
             String[] site = e.getId().split("_");
-            String dataPath = "/" + site[0] + "/" + site[1] + path;
+            System.out.println("qqqqqqqq");
+            String dataPath = "/" + site[0] + "/" + site[1] + path.replace("/metaServer/data", "");
             e.setPath(dataPath);
+            System.out.println(dataPath);
         });
         statInfo.setReplicaData(replicaDatas);
         return statInfo;

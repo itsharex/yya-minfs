@@ -41,7 +41,7 @@ public abstract class FileSystem {
 
         String res = "127.0.0.1:8000";
         try {
-            ZkUtil zkUtil = new ZkUtil();;
+            ZkUtil zkUtil = new ZkUtil();
             CuratorFramework curator = zkUtil.getClient();
             if (curator.checkExists().forPath(SERVER_PATH + "/master") == null) {
                 ObjectMapper objectMapper = new ObjectMapper();

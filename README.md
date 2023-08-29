@@ -29,14 +29,11 @@ minFS是一个简单的分布式文件存储系统，具备基本的文件操作
 
 ## 需要的第三方组件
 
-- ZooKeeper: 可通过启动参数 `-Dzookeeper.addr=10.0.0.201:2181` 指定。
+- ZooKeeper: 可通过启动参数 `-Dzookeeper.addr=x.x.x.x:xxxx` 指定。
 
 ## 注意事项
 
 - 集群内部心跳超时时间小于30s，fsck+recovery扫描、恢复周期小于等于120s。
 - 最终业务编译后放入`workpublish`目录下。
 
-## 验收环境
-
-- ZooKeeper地址：10.0.0.201:2181
 
